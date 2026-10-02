@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="application-name" content="Habit Streaks">
+<meta name="description" content="Daily habit tracker with streak counters.">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Habit Streaks</title>
+<style>
+:root{--accent:#FACC15;--bg:#171204;--card:#241B05;--text:#FDF6E3;--dim:#B7A377;}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{-webkit-user-select:none;user-select:none;background:var(--bg);color:var(--text);
+  font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+  display:flex;align-items:center;justify-content:center;min-height:100dvh}
+.app{width:min(480px,100vw - 24px);height:100dvh;max-height:780px;display:flex;flex-direction:column;padding:16px 14px 12px}
+header{text-align:center;margin-bottom:8px}
+header h1{font-size:22px;letter-spacing:.06em;color:var(--accent)}
+header .sub{font-size:12px;color:var(--dim);margin-top:2px}
+.addrow{display:flex;gap:8px;margin-bottom:10px}
+#name{flex:1;min-height:48px;background:var(--card);border:1px solid #4A3B10;color:var(--text);
+  border-radius:12px;padding:0 12px;font-size:16px;outline:none;-webkit-user-select:text;user-select:text}
+#name:focus-visible{outline:2px solid var(--accent)}
+button{min-height:48px;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer}
+button[data-focusable]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#addbtn{background:var(--accent);color:#171204;padding:0 18px}
+#list{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:8px;padding-bottom:4px}
+.habit{background:var(--card);border:1px solid #4A3B10;border-radius:14px;padding:8px 8px 8px 12px;
+  display:flex;align-items:center;gap:10px}
+.habit .info{flex:1;min-width:0}
+.habit .nm{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.habit .streak{font-size:13px;color:var(--dim);margin-top:2px}
+.habit .streak b{color:var(--accent);font-size:15px}
+.donebtn{background:#2E2708;border:1px solid var(--accent);color:var(--accent);padding:0 14px;font-size:15px}
+.donebtn.done{background:var(--accent);color:#171204}
+.delbtn{background:transparent;color:#E06565;border:1px solid #5A2E2E;width:48px;font-size:18px}
+.empty{text-align:center;color:var(--dim);font-size:14px;padding:24px 8px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>HABIT STREAKS</h1>
+    <div class="sub">tap Done to log today</div>
+  </header>
+  <div class="addrow">
+    <input id="name" type="text" placeholder="New habit name" maxlength="40" aria-label="New habit name">
+    <button id="addbtn" data-focusable>+ Add</button>
+  </div>
+  <div id="list"></div>
+</div>
+<script>
+(function(){
+"use strict";
+var KEY="habit-streaks-v1";
+function load(){
+  try{
+    var raw=localStorage.getItem(KEY);
+    if(raw){var p=JSON.parse(raw);if(p&&Array.isArray(p.habits))return p;}
+  }catch(e){}
+  return {habits:[]};
+}
+function save(state){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function dayStr(d){
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function streak(days){
+  var set={},i;
+  for(i=0;i<days.length;i++)set[days[i]]=true;
+  var d=new Date(),n=0;
+  if(!set[dayStr(d)])d.setDate(d.getDate()-1);
+  while(set[dayStr(d)]&&n<3650){n++;d.setDate(d.getDate()-1);}
+  return n;
+}
+var state=load();
+var listEl=document.getElementById("list");
+var nameInput=document.getElementById("name");
+var addBtn=document.getElementById("addbtn");
+function todayDone(h){return h.days.indexOf(dayStr(new Date()))>=0;}
+function render(){
+  listEl.innerHTML="";
+  if(state.habits.length===0){
+    var e=document.createElement("div");
+    e.className="empty";e.textContent="No habits yet \u2014 add one above.";
+    listEl.appendChild(e);return;
+  }
+  state.habits.forEach(function(h,idx){
+    var s=streak(h.days);
+    var div=document.createElement("div");
+    div.className="habit";
+    var info=document.createElement("div");info.className="info";
+    var nm=document.createElement("div");nm.className="nm";nm.textContent=h.name;
+    var st=document.createElement("div");st.className="streak";
+    st.innerHTML="\uD83D\uDD25 <b>"+s+"</b> day"+(s===1?"":"s");
+    info.appendChild(nm);info.appendChild(st);
+    var done=document.createElement("button");
+    done.className="donebtn"+(todayDone(h)?" done":"");
+    done.setAttribute("data-focusable","");
+    done.textContent=todayDone(h)?"\u2713 Done":"Done today";
+    done.disabled=todayDone(h);
+    done.addEventListener("click",function(){
+      if(!todayDone(h)){h.days.push(dayStr(new Date()));save(state);render();refocus();}
+    });
+    var del=document.createElement("button");
+    del.className="delbtn";del.setAttribute("data-focusable","");del.textContent="\u00D7";
+    del.setAttribute("aria-label","Delete "+h.name);
+    del.addEventListener("click",function(){
+      state.habits.splice(idx,1);save(state);render();refocus();
+    });
+    div.appendChild(info);div.appendChild(done);div.appendChild(del);
+    listEl.appendChild(div);
+  });
+}
+function focusables(){
+  return Array.prototype.slice.call(document.querySelectorAll("[data-focusable]")).filter(function(b){return !b.disabled;});
+}
+function refocus(){
+  var f=focusables();
+  if(f.length)f[0].focus();
+}
+addBtn.addEventListener("click",function(){
+  var v=nameInput.value.trim();
+  if(!v){nameInput.focus();return;}
+  state.habits.push({name:v,days:[]});
+  save(state);nameInput.value="";render();
+  var f=focusables();if(f.length)f[0].focus();
+});
+nameInput.addEventListener("keydown",function(e){
+  if(e.key==="Enter"){e.preventDefault();addBtn.click();}
+});
+document.addEventListener("keydown",function(e){
+  if(document.activeElement===nameInput)return;
+  if(e.key==="ArrowDown"||e.key==="ArrowRight"){
+    e.preventDefault();
+    var f=focusables(),i=f.indexOf(document.activeElement);
+    f[(i+1+f.length)%f.length].focus();
+  }else if(e.key==="ArrowUp"||e.key==="ArrowLeft"){
+    e.preventDefault();
+    var f2=focusables(),i2=f2.indexOf(document.activeElement);
+    f2[(i2-1+f2.length)%f2.length].focus();
+  }
+});
+render();
+nameInput.focus();
+})();
+</script>
+</body>
+</html>
