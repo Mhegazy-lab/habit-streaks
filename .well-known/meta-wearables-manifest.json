@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "name": "Habit Streaks",
+  "description": "Daily habit tracker with streak counters.",
+  "appearance": {
+    "theme_color": "#FACC15",
+    "icon": {
+      "src": "../icon-mono.png",
+      "type": "monochrome"
+    },
+    "icon_background": {
+      "colors": [
+        "#FACC15",
+        "#A8860A",
+        "#6B5605",
+        "#221B02"
+      ],
+      "stops": [
+        0.0,
+        0.33,
+        0.66,
+        1.0
+      ],
+      "inner_glow_color": "#FEF08A"
+    }
+  }
+}
